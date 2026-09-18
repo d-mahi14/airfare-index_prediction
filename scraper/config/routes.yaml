@@ -1,0 +1,85 @@
+# scraper/config/routes.yaml
+# Route definitions for the APIx collection pipeline.
+#
+# These are the routes for which we collect airfare observations.
+# Weights will be populated from the PSD specification (Phase 11).
+# Until then, weight fields are placeholders only.
+#
+# Fields:
+#   origin:       IATA origin airport code
+#   destination:  IATA destination airport code
+#   route_code:   canonical identifier (origin-destination)
+#   name:         human-readable route name
+#   active:       whether this route is currently being collected
+#
+# Note: These are India's highest-traffic domestic routes by passenger volume
+# (DGCA annual data). Route weights will be specified by the PSD document.
+
+routes:
+  - origin: BOM
+    destination: DEL
+    route_code: BOM-DEL
+    name: "Mumbai → Delhi"
+    active: true
+
+  - origin: DEL
+    destination: BOM
+    route_code: DEL-BOM
+    name: "Delhi → Mumbai"
+    active: true
+
+  - origin: BOM
+    destination: BLR
+    route_code: BOM-BLR
+    name: "Mumbai → Bengaluru"
+    active: true
+
+  - origin: DEL
+    destination: BLR
+    route_code: DEL-BLR
+    name: "Delhi → Bengaluru"
+    active: true
+
+  - origin: BOM
+    destination: HYD
+    route_code: BOM-HYD
+    name: "Mumbai → Hyderabad"
+    active: false   # enable after BOM-DEL is stable
+
+  - origin: DEL
+    destination: HYD
+    route_code: DEL-HYD
+    name: "Delhi → Hyderabad"
+    active: false
+
+  - origin: BOM
+    destination: MAA
+    route_code: BOM-MAA
+    name: "Mumbai → Chennai"
+    active: false
+
+  - origin: DEL
+    destination: MAA
+    route_code: DEL-MAA
+    name: "Delhi → Chennai"
+    active: false
+
+  - origin: DEL
+    destination: CCU
+    route_code: DEL-CCU
+    name: "Delhi → Kolkata"
+    active: false
+
+  - origin: BOM
+    destination: CCU
+    route_code: BOM-CCU
+    name: "Mumbai → Kolkata"
+    active: false
+
+# Lead-time windows to collect for each route (days before travel)
+lead_time_days:
+  - 1
+  - 7
+  - 15
+  - 30
+  - 45

@@ -1,0 +1,29 @@
+# docker-compose.yml
+# Runs PostgreSQL 16 for the APIx project.
+# Usage:
+#   docker-compose up -d          # start in background
+#   docker-compose down           # stop
+#   docker-compose down -v        # stop + remove volume (destructive!)
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: apix_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-airfare_db}
+      POSTGRES_USER: ${POSTGRES_USER:-airfare_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-apix_dev_password_2024}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-airfare_user} -d ${POSTGRES_DB:-airfare_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    name: apix_postgres_data

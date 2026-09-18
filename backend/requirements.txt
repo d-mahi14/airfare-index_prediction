@@ -1,0 +1,32 @@
+# ============================================================
+# backend/requirements.txt
+# Pin major versions; allow minor/patch updates for security.
+# ============================================================
+
+# --- Web framework ---
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+
+# --- Data validation ---
+pydantic==2.10.3
+pydantic-settings==2.7.0
+
+# --- Database ---
+sqlalchemy==2.0.36
+alembic==1.14.0
+psycopg2-binary==2.9.10
+
+# --- Data processing ---
+pandas==2.2.3
+numpy==2.2.0
+
+# --- Environment ---
+python-dotenv==1.0.1
+
+# --- Testing ---
+pytest==8.3.4
+pytest-cov==6.0.0
+
+# --- Utilities ---
+httpx==0.28.1        # async HTTP (for future real collectors)
+PyYAML==6.0.2        # route config loading
