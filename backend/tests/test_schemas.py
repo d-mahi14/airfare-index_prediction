@@ -5,16 +5,19 @@ Tests for the AirfareObservationCreate Pydantic schema.
 Covers:
   - Valid minimal observation
   - Missing required fields
-  - Negative fares
+  - Non-positive fares
   - total_fare < base_fare
+  - Fee breakdown summation check (within 0.05 tolerance)
   - Invalid currency
   - Invalid fare class
   - IATA code normalization
   - Route-to-self rejection
   - Availability normalization
+  - Departure band validation and auto-derivation
+  - Target lead window validation
 """
 import sys
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 
@@ -55,6 +58,7 @@ class TestValidObservation:
         assert obs.currency == "INR"
         assert obs.fare_class == "Economy"
         assert obs.availability == "available"
+        assert obs.is_synthetic is True
 
     def test_full_valid(self):
         obs = AirfareObservationCreate(
@@ -62,9 +66,14 @@ class TestValidObservation:
                 airline_iata="6E",
                 flight_number="6E123",
                 base_fare=Decimal("4200.00"),
-                taxes=Decimal("700.00"),
-                fees=Decimal("0.00"),
+                taxes=Decimal("200.00"),
+                udf_psf=Decimal("300.00"),
+                convenience_fee=Decimal("200.00"),
+                other_fees=Decimal("0.00"),
+                total_fare=Decimal("4900.00"),
                 fare_class="Economy",
+                dep_time=time(8, 30),
+                target_lead_window=7,
                 availability="available",
             )
         )
@@ -72,7 +81,10 @@ class TestValidObservation:
         assert obs.flight_number == "6E123"
         assert obs.base_fare == Decimal("4200.00")
         assert obs.total_fare == Decimal("4900.00")
-        assert obs.taxes == Decimal("700.00")
+        assert obs.taxes == Decimal("200.00")
+        assert obs.udf_psf == Decimal("300.00")
+        assert obs.convenience_fee == Decimal("200.00")
+        assert obs.dep_band == "morning"  # auto-derived from 08:30
 
     def test_iata_codes_uppercased(self):
         obs = AirfareObservationCreate(**_base_obs(origin="bom", destination="del"))
@@ -117,10 +129,10 @@ class TestFareValidation:
         with pytest.raises(ValidationError):
             AirfareObservationCreate(**_base_obs(total_fare=Decimal("-100.00")))
 
-    def test_zero_total_fare_passes_schema(self):
-        """Zero total fare passes Pydantic but will be rejected by validator (sold_out/zero fare)."""
-        obs = AirfareObservationCreate(**_base_obs(total_fare=Decimal("0.00")))
-        assert obs.total_fare == Decimal("0.00")
+    def test_zero_total_fare_raises(self):
+        """Zero total fare is rejected by schema (fares must be > 0)."""
+        with pytest.raises(ValidationError):
+            AirfareObservationCreate(**_base_obs(total_fare=Decimal("0.00")))
 
     def test_total_less_than_base_raises(self):
         with pytest.raises(ValidationError, match="total_fare"):
@@ -132,14 +144,32 @@ class TestFareValidation:
             )
 
     def test_base_equals_total_passes(self):
-        """base_fare == total_fare is valid (no taxes scenario)."""
+        """base_fare == total_fare is valid (no taxes/fees scenario)."""
         obs = AirfareObservationCreate(
             **_base_obs(
                 base_fare=Decimal("4900.00"),
+                taxes=Decimal("0.00"),
+                udf_psf=Decimal("0.00"),
+                convenience_fee=Decimal("0.00"),
+                other_fees=Decimal("0.00"),
                 total_fare=Decimal("4900.00"),
             )
         )
         assert obs.base_fare == obs.total_fare
+
+    def test_fee_breakdown_mismatch_raises(self):
+        """Mismatched sum of base + taxes + fees raises ValidationError."""
+        with pytest.raises(ValidationError, match="must equal base_fare"):
+            AirfareObservationCreate(
+                **_base_obs(
+                    base_fare=Decimal("4000.00"),
+                    taxes=Decimal("500.00"),
+                    udf_psf=Decimal("100.00"),
+                    convenience_fee=Decimal("100.00"),
+                    other_fees=Decimal("0.00"),
+                    total_fare=Decimal("5000.00"),  # Expected 4700.00
+                )
+            )
 
 
 class TestRouteValidation:
@@ -166,3 +196,18 @@ class TestFareClassValidation:
     def test_premium_economy(self):
         obs = AirfareObservationCreate(**_base_obs(fare_class="Premium Economy"))
         assert obs.fare_class == "Premium Economy"
+
+
+class TestDepartureAndLeadValidation:
+    def test_invalid_dep_band_raises(self):
+        with pytest.raises(ValidationError, match="Invalid dep_band"):
+            AirfareObservationCreate(**_base_obs(dep_band="midnight"))
+
+    def test_invalid_target_lead_window_raises(self):
+        with pytest.raises(ValidationError, match="Invalid target_lead_window"):
+            AirfareObservationCreate(**_base_obs(target_lead_window=10))
+
+    def test_valid_target_lead_windows(self):
+        for w in [1, 7, 15, 30, 45]:
+            obs = AirfareObservationCreate(**_base_obs(target_lead_window=w))
+            assert obs.target_lead_window == w

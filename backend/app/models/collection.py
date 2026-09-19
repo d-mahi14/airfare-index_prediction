@@ -2,8 +2,8 @@
 backend/app/models/collection.py
 CollectionRun model — records metadata for each scraper execution.
 
-Every collection run is a unit of work: one source × one route × one timestamp.
-This provides a complete audit trail of what was collected, when, and how it went.
+Every collection run is a unit of work: one source per run execution (with optional route context).
+This provides a complete audit trail of what was collected, when, blocks, CAPTCHAs, and completion status.
 """
 import uuid
 from datetime import datetime, timezone
@@ -14,6 +14,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     SmallInteger,
+    String,
     Text,
 )
 from sqlalchemy.dialects.postgresql import UUID
@@ -28,12 +29,15 @@ def _now_utc():
 
 class CollectionRun(Base):
     """
-    One execution of a collector for a specific source × route combination.
+    One execution of a collector for a source.
 
     Fields:
+        status          -- 'running' | 'completed' | 'failed' | 'partial'
+        blocked_count   -- number of HTTP 403 / IP blocks encountered
+        captcha_count   -- number of CAPTCHA challenges detected
         records_found   -- total observations returned by the source
         records_saved   -- observations successfully written to DB
-        records_rejected -- observations that failed validation
+        records_rejected -- observations that failed validation or deduplication
         error_message   -- set if the run itself failed (not per-record errors)
     """
     __tablename__ = "collection_runs"
@@ -48,14 +52,22 @@ class CollectionRun(Base):
     route_id = Column(
         Integer,
         ForeignKey("routes.id", ondelete="RESTRICT"),
-        nullable=False,
+        nullable=True,
         index=True,
+    )
+    status = Column(
+        String(20),
+        nullable=False,
+        default="running",
+        comment="running | completed | failed | partial",
     )
     start_time = Column(DateTime(timezone=True), nullable=False, default=_now_utc)
     end_time = Column(DateTime(timezone=True), nullable=True)
     records_found = Column(Integer, nullable=True, default=0)
     records_saved = Column(Integer, nullable=True, default=0)
     records_rejected = Column(Integer, nullable=True, default=0)
+    blocked_count = Column(Integer, nullable=False, default=0, comment="Number of request blocks")
+    captcha_count = Column(Integer, nullable=False, default=0, comment="Number of CAPTCHA challenges encountered")
     error_message = Column(Text, nullable=True)
 
     # Relationships
@@ -66,6 +78,6 @@ class CollectionRun(Base):
     def __repr__(self) -> str:
         return (
             f"<CollectionRun id={str(self.id)[:8]}... "
-            f"source_id={self.source_id} route_id={self.route_id} "
+            f"source_id={self.source_id} status={self.status} "
             f"saved={self.records_saved}>"
         )

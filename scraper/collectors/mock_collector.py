@@ -4,46 +4,28 @@ Synthetic/mock airfare collector for pipeline development and testing.
 
 PURPOSE:
   Generates realistic synthetic Indian domestic airfare observations.
-  Used when live scraping is not yet configured or is under ethical review.
-
-  The synthetic data is:
-    - Statistically plausible (based on real Indian domestic fare ranges)
-    - Deterministically seeded so tests are reproducible
-    - Structurally identical to what a real collector would produce
-    - Clearly labelled as synthetic (source_name = "MockCollector")
-
-DESIGN NOTE:
-  Replacing this with a real collector only requires:
-    1. Creating a new class that extends BaseCollector
-    2. Implementing collect()
-    3. Passing it to the pipeline instead of MockCollector
-
-  Nothing in the pipeline, validator, or storage layer changes.
-
-SYNTHETIC FARE MODEL:
-  - Base fares follow a realistic BOM-DEL distribution (~₹2500–₹8000)
-  - Lead-time pricing: fares increase as travel approaches
-  - Airlines: IndiGo, Air India, SpiceJet, Vistara (now Air India Express)
-  - Taxes are ~18% of base fare (GST on economy domestic)
-  - Small random variation simulates real price noise
+  Includes fee breakdown (taxes, udf_psf, convenience_fee, other_fees),
+  flight schedules (dep_time, dep_band, duration, stops), and booking metadata.
 """
 import json
 import logging
 import random
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timezone
 from decimal import Decimal
 from typing import List
+from zoneinfo import ZoneInfo
 
 from backend.app.schemas.airfare import AirfareObservationCreate
 from scraper.base import BaseCollector
 
 logger = logging.getLogger(__name__)
 
+KOLKATA_TZ = ZoneInfo("Asia/Kolkata")
+
 # ---------------------------------------------------------------------------
 # Synthetic fare configuration
 # ---------------------------------------------------------------------------
 
-# Indian domestic airlines with IATA codes
 _AIRLINES = [
     {"name": "IndiGo", "iata": "6E"},
     {"name": "Air India", "iata": "AI"},
@@ -52,8 +34,6 @@ _AIRLINES = [
     {"name": "Akasa Air", "iata": "QP"},
 ]
 
-# Route-specific base fare ranges (Economy, one-way, INR)
-# Based on typical observed ranges for these routes
 _ROUTE_FARE_RANGES = {
     "BOM-DEL": (2800, 8500),
     "BOM-BLR": (2200, 6000),
@@ -68,7 +48,20 @@ _ROUTE_FARE_RANGES = {
 }
 _DEFAULT_FARE_RANGE = (2000, 9000)
 
-# Lead-time multiplier: closer to departure = more expensive
+_ROUTE_DURATIONS = {
+    "BOM-DEL": 130,
+    "BOM-BLR": 105,
+    "DEL-BLR": 165,
+    "DEL-HYD": 135,
+    "BOM-HYD": 90,
+    "DEL-MAA": 170,
+    "BOM-MAA": 115,
+    "DEL-CCU": 140,
+    "BOM-CCU": 165,
+    "DEL-AMD": 80,
+}
+_DEFAULT_DURATION = 120
+
 _LEAD_TIME_MULTIPLIERS = {
     1:  1.45,
     7:  1.20,
@@ -78,12 +71,7 @@ _LEAD_TIME_MULTIPLIERS = {
 }
 _DEFAULT_LEAD_MULTIPLIER = 1.0
 
-# GST on economy class domestic air tickets (India): ~18% effective rate
-# (5% on base + fuel surcharge portion; simplified to ~18% of base)
-_TAX_RATE = Decimal("0.18")
-
-# Number of airlines to include per collection (simulates not all airlines
-# always flying a route at any given time)
+_TAX_RATE = Decimal("0.05")  # 5% GST on domestic economy base
 _MIN_AIRLINES = 2
 _MAX_AIRLINES = 4
 
@@ -91,9 +79,7 @@ _MAX_AIRLINES = 4
 class MockCollector(BaseCollector):
     """
     Synthetic airfare collector.
-
     Generates deterministically-seeded realistic observations.
-    seed=None for random behavior; set seed for reproducible tests.
     """
 
     source_name = "MockCollector"
@@ -115,37 +101,32 @@ class MockCollector(BaseCollector):
     ) -> List[AirfareObservationCreate]:
         """
         Generate synthetic airfare observations for the given route and date.
-
-        Returns one observation per airline that "operates" this route.
         """
         origin = origin.upper().strip()
         destination = destination.upper().strip()
         collection_ts = datetime.now(timezone.utc)
+        collection_date_kolkata = collection_ts.astimezone(KOLKATA_TZ).date()
         route_code = f"{origin}-{destination}"
 
         logger.info(
             f"MockCollector: collecting {route_code} for travel_date={travel_date}"
         )
 
-        # Compute lead days
-        lead_days = (travel_date - collection_ts.date()).days
+        lead_days = (travel_date - collection_date_kolkata).days
         if lead_days < 0:
             logger.warning(
                 f"travel_date {travel_date} is in the past; returning empty list"
             )
             return []
 
-        # Get fare range for this route (or default)
         fare_min, fare_max = _ROUTE_FARE_RANGES.get(route_code, _DEFAULT_FARE_RANGE)
+        flight_duration = _ROUTE_DURATIONS.get(route_code, _DEFAULT_DURATION)
 
-        # Lead-time multiplier
-        # Find closest lead_time bucket
-        multiplier = _DEFAULT_LEAD_MULTIPLIER
+        # Match target lead window (1, 7, 15, 30, 45)
         closest_bucket = min(_LEAD_TIME_MULTIPLIERS.keys(), key=lambda k: abs(k - lead_days))
-        if abs(closest_bucket - lead_days) <= 7:
-            multiplier = _LEAD_TIME_MULTIPLIERS[closest_bucket]
+        target_lead_window = closest_bucket if abs(closest_bucket - lead_days) <= 7 else None
+        multiplier = _LEAD_TIME_MULTIPLIERS.get(closest_bucket, _DEFAULT_LEAD_MULTIPLIER)
 
-        # Select airlines for this collection
         num_airlines = self._rng.randint(_MIN_AIRLINES, min(_MAX_AIRLINES, len(_AIRLINES)))
         selected_airlines = self._rng.sample(_AIRLINES, num_airlines)
 
@@ -153,18 +134,21 @@ class MockCollector(BaseCollector):
         raw_records = []
 
         for airline in selected_airlines:
-            # Generate base fare with lead-time adjustment and random noise
             raw_base = self._rng.uniform(fare_min, fare_max) * multiplier
-            # Round to nearest 10 (airlines typically price in round numbers)
             base_fare = Decimal(str(round(raw_base / 10) * 10))
             taxes = (base_fare * _TAX_RATE).quantize(Decimal("1.00"))
-            fees = Decimal("0.00")
-            total_fare = base_fare + taxes + fees
+            udf_psf = Decimal(str(self._rng.choice([250, 350, 420])))
+            convenience_fee = Decimal(str(self._rng.choice([200, 250, 300])))
+            other_fees = Decimal("0.00")
+            total_fare = base_fare + taxes + udf_psf + convenience_fee + other_fees
 
-            # Synthetic flight number
             flight_num = f"{airline['iata']}{self._rng.randint(100, 999)}"
+            dep_hour = self._rng.randint(5, 22)
+            dep_minute = self._rng.choice([0, 15, 30, 45])
+            dep_time_obj = time(dep_hour, dep_minute)
 
-            # Build raw record for file storage
+            seats_left = self._rng.choice([None, 3, 5, 8, 12])
+
             raw_record = {
                 "source": self.source_name,
                 "origin": origin,
@@ -174,21 +158,30 @@ class MockCollector(BaseCollector):
                 "flight_number": flight_num,
                 "travel_date": travel_date.isoformat(),
                 "collection_timestamp": collection_ts.isoformat(),
+                "collection_date": collection_date_kolkata.isoformat(),
                 "lead_days": lead_days,
                 "fare_class": "Economy",
                 "base_fare": float(base_fare),
                 "taxes": float(taxes),
-                "fees": float(fees),
+                "udf_psf": float(udf_psf),
+                "convenience_fee": float(convenience_fee),
+                "other_fees": float(other_fees),
                 "total_fare": float(total_fare),
                 "currency": "INR",
+                "dep_time": dep_time_obj.strftime("%H:%M:%S"),
+                "duration_min": flight_duration,
+                "stops": 0,
+                "seats_left": seats_left,
                 "availability": "available",
-                "synthetic": True,
+                "target_lead_window": target_lead_window,
+                "is_synthetic": True,
             }
             raw_records.append(raw_record)
 
             try:
                 obs = AirfareObservationCreate(
                     collection_timestamp=collection_ts,
+                    collection_date=collection_date_kolkata,
                     source_name=self.source_name,
                     origin=origin,
                     destination=destination,
@@ -196,13 +189,22 @@ class MockCollector(BaseCollector):
                     airline_iata=airline["iata"],
                     flight_number=flight_num,
                     travel_date=travel_date,
-                    # lead_days will be auto-computed and validated by schema
+                    lead_days=lead_days,
                     fare_class="Economy",
                     base_fare=base_fare,
                     taxes=taxes,
-                    fees=fees,
+                    udf_psf=udf_psf,
+                    convenience_fee=convenience_fee,
+                    other_fees=other_fees,
                     total_fare=total_fare,
                     currency="INR",
+                    dep_time=dep_time_obj,
+                    duration_min=flight_duration,
+                    stops=0,
+                    seats_left=seats_left,
+                    is_sold_out=False,
+                    is_synthetic=True,
+                    target_lead_window=target_lead_window,
                     availability="available",
                 )
                 observations.append(obs)
@@ -210,11 +212,9 @@ class MockCollector(BaseCollector):
                 logger.error(f"Schema validation failed for {airline['name']}: {exc}")
                 continue
 
-        # Save raw JSON to disk for reproducibility
         raw_content = json.dumps(raw_records, indent=2, ensure_ascii=False)
         raw_path = self._save_raw(raw_content, suffix="json")
 
-        # Attach raw_reference to each observation
         for obs in observations:
             obs.raw_reference = str(raw_path)
 

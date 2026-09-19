@@ -4,40 +4,26 @@ Field-level and cross-field validation for airfare observations.
 
 This is a second validation pass that runs AFTER Pydantic schema validation.
 Pydantic catches structural/type errors; this validator catches domain-specific
-business rule violations that need richer context (e.g., route plausibility).
+business rule violations.
 
 Validation result:
     status = "valid"    → passes all checks
     status = "rejected" → fails a check; rejection_reason is set
     status = "duplicate"→ detected as duplicate of existing record
-
-Every rejected observation is recorded with a reason — never silently discarded.
 """
 import logging
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import List, Optional, Tuple
 
-from backend.app.schemas.airfare import AirfareObservationCreate
+from backend.app.schemas.airfare import VALID_DEP_BANDS, VALID_LEAD_WINDOWS, AirfareObservationCreate
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-
 # Plausible maximum one-way domestic fare (INR).
-# ₹75,000 is extremely high but possible for last-minute business class.
-# We flag above this for review, not auto-reject.
 MAX_PLAUSIBLE_FARE_INR = Decimal("75000")
-
-# Absolute minimum fare — below this, something is clearly wrong
 MIN_PLAUSIBLE_FARE_INR = Decimal("500")
 
-
-# ---------------------------------------------------------------------------
-# Result dataclass
-# ---------------------------------------------------------------------------
 
 @dataclass
 class ValidationResult:
@@ -51,10 +37,6 @@ class ValidationResult:
         return self.status == "valid"
 
 
-# ---------------------------------------------------------------------------
-# Individual rule functions (each returns (passed: bool, reason: str | None))
-# ---------------------------------------------------------------------------
-
 def _check_total_fare_present(obs: AirfareObservationCreate) -> Tuple[bool, Optional[str]]:
     if obs.total_fare is None:
         return False, "missing_total_fare"
@@ -64,6 +46,12 @@ def _check_total_fare_present(obs: AirfareObservationCreate) -> Tuple[bool, Opti
 def _check_fare_positive(obs: AirfareObservationCreate) -> Tuple[bool, Optional[str]]:
     if obs.total_fare <= Decimal("0"):
         return False, f"non_positive_total_fare:{obs.total_fare}"
+    return True, None
+
+
+def _check_base_fare_positive(obs: AirfareObservationCreate) -> Tuple[bool, Optional[str]]:
+    if obs.base_fare is not None and obs.base_fare <= Decimal("0"):
+        return False, f"non_positive_base_fare:{obs.base_fare}"
     return True, None
 
 
@@ -79,9 +67,35 @@ def _check_base_lte_total(obs: AirfareObservationCreate) -> Tuple[bool, Optional
     return True, None
 
 
+def _check_fee_sum_tolerance(obs: AirfareObservationCreate) -> Tuple[bool, Optional[str]]:
+    if obs.base_fare is not None:
+        expected_total = (
+            obs.base_fare +
+            (obs.taxes or Decimal("0")) +
+            (obs.udf_psf or Decimal("0")) +
+            (obs.convenience_fee or Decimal("0")) +
+            (obs.other_fees or Decimal("0"))
+        )
+        if abs(obs.total_fare - expected_total) > Decimal("0.05"):
+            return False, f"fee_breakdown_mismatch:total({obs.total_fare})!=expected({expected_total})"
+    return True, None
+
+
 def _check_lead_days_non_negative(obs: AirfareObservationCreate) -> Tuple[bool, Optional[str]]:
     if obs.lead_days is not None and obs.lead_days < 0:
         return False, f"negative_lead_days:{obs.lead_days}"
+    return True, None
+
+
+def _check_dep_band(obs: AirfareObservationCreate) -> Tuple[bool, Optional[str]]:
+    if obs.dep_band is not None and obs.dep_band not in VALID_DEP_BANDS:
+        return False, f"invalid_dep_band:{obs.dep_band}"
+    return True, None
+
+
+def _check_target_lead_window(obs: AirfareObservationCreate) -> Tuple[bool, Optional[str]]:
+    if obs.target_lead_window is not None and obs.target_lead_window not in VALID_LEAD_WINDOWS:
+        return False, f"invalid_target_lead_window:{obs.target_lead_window}"
     return True, None
 
 
@@ -92,11 +106,7 @@ def _check_currency(obs: AirfareObservationCreate) -> Tuple[bool, Optional[str]]
 
 
 def _check_availability_not_sold_out(obs: AirfareObservationCreate) -> Tuple[bool, Optional[str]]:
-    """
-    Sold-out flights are rejected for index purposes.
-    They don't represent an actionable market price.
-    """
-    if obs.availability == "sold_out":
+    if obs.availability == "sold_out" or obs.is_sold_out:
         return False, "sold_out_flight"
     return True, None
 
@@ -113,27 +123,22 @@ def _check_route_not_self(obs: AirfareObservationCreate) -> Tuple[bool, Optional
     return True, None
 
 
-# ---------------------------------------------------------------------------
-# Warning rules (don't reject, but flag for review)
-# ---------------------------------------------------------------------------
-
 def _warn_fare_suspicious_high(obs: AirfareObservationCreate) -> Optional[str]:
     if obs.total_fare > MAX_PLAUSIBLE_FARE_INR:
         return f"fare_unusually_high:{obs.total_fare}"
     return None
 
 
-# ---------------------------------------------------------------------------
-# Main validator
-# ---------------------------------------------------------------------------
-
-# Ordered list of hard validation rules (any failure → rejected)
 _HARD_RULES = [
     _check_total_fare_present,
     _check_fare_positive,
+    _check_base_fare_positive,
     _check_fare_minimum,
     _check_base_lte_total,
+    _check_fee_sum_tolerance,
     _check_lead_days_non_negative,
+    _check_dep_band,
+    _check_target_lead_window,
     _check_currency,
     _check_availability_not_sold_out,
     _check_availability_not_cancelled,
@@ -146,12 +151,7 @@ _WARNING_RULES = [
 
 
 def validate_observation(obs: AirfareObservationCreate) -> ValidationResult:
-    """
-    Run all validation rules against a single observation.
-
-    Hard failures → status="rejected" with reason.
-    Warnings → status remains "valid" but warnings list is populated.
-    """
+    """Run all validation rules against a single observation."""
     warnings: List[str] = []
 
     for rule in _HARD_RULES:
@@ -175,13 +175,7 @@ def validate_observation(obs: AirfareObservationCreate) -> ValidationResult:
 def validate_observations(
     observations: List[AirfareObservationCreate],
 ) -> Tuple[List[AirfareObservationCreate], List[Tuple[AirfareObservationCreate, str]]]:
-    """
-    Validate a list of observations.
-
-    Returns:
-        valid_obs   -- list of observations that passed validation
-        rejected    -- list of (observation, rejection_reason) tuples
-    """
+    """Validate a list of observations."""
     valid_obs: List[AirfareObservationCreate] = []
     rejected: List[Tuple[AirfareObservationCreate, str]] = []
 

@@ -2,22 +2,24 @@
 
 > An independent, high-frequency airfare data collection and price index system for Indian domestic aviation.
 
-## Project Status — Milestone 1 ✅
+## Project Status — Milestone 1 Hardened ✅
 
 | Component | Status |
 |-----------|--------|
 | Project structure | ✅ Complete |
-| Python environment | ✅ Python 3.12 venv |
-| PostgreSQL (Docker) | ✅ Configured |
-| Database schema | ✅ 7 tables, Alembic migrations |
-| AirfareObservation model | ✅ Pydantic v2 with full validation |
-| MockCollector | ✅ Synthetic BOM-DEL observations |
+| Python environment | ✅ Python 3.12 / 3.13 venv |
+| PostgreSQL | ✅ PostgreSQL 16 configured & tested |
+| Database schema | ✅ 8 tables, Alembic migrations (001, 002) |
+| Hardened constraints | ✅ CHECK constraints, unique dedup keys, timezone precision |
+| AirfareObservation model | ✅ Full fee breakdown, departure bands, booking metadata |
+| MockCollector | ✅ Synthetic BOM-DEL observations with fee breakdown & timing |
 | Fare parser | ✅ Indian currency string parsing |
-| Validation pipeline | ✅ 9 validation rules |
-| Storage pipeline | ✅ Duplicate detection, audit trail |
+| Validation pipeline | ✅ Multi-rule validation with fee breakdown tolerance |
+| Storage pipeline | ✅ DB-enforced dedup, audit trail, collection run stats |
 | CLI collection script | ✅ scripts/run_collection.py |
 | MoSPI reference data | ✅ data/reference/mospi_airfare.csv |
-| Tests | ✅ 109 passing |
+| Weighting specification | ✅ DGCA city-pair traffic passenger weighting |
+| Tests | ✅ 122 passing (PostgreSQL-backed) |
 
 ---
 
@@ -25,18 +27,15 @@
 
 ### 1. Prerequisites
 
-- Python 3.11+ (3.12 installed)
-- Docker Desktop (for PostgreSQL)
-- Node.js 22+ (for frontend — Phase 15)
+- Python 3.11+
+- PostgreSQL 16 (or Docker Desktop)
+- Node.js 22+ (for frontend dashboard)
 
 ### 2. Clone and set up environment
 
 ```powershell
-# Clone the repo
-cd airfare-sih
-
 # Create virtual environment
-py -3.12 -m venv venv
+python -m venv venv
 
 # Activate
 .\venv\Scripts\Activate.ps1
@@ -50,22 +49,16 @@ pip install -r backend\requirements.txt
 ```powershell
 # Copy and edit .env
 Copy-Item .env.example .env
-# Edit .env with your credentials (defaults work for Docker)
+# Edit .env with your credentials (defaults work for standard PostgreSQL)
 ```
 
-### 4. Start PostgreSQL
-
-```powershell
-docker-compose up -d
-```
-
-### 5. Run database migrations
+### 4. Run database migrations
 
 ```powershell
 alembic -c alembic.ini upgrade head
 ```
 
-### 6. Run a collection job
+### 5. Run a collection job
 
 ```powershell
 # Dry run (validate only, no DB write)
@@ -78,7 +71,7 @@ python scripts\run_collection.py --origin BOM --destination DEL --lead-days 7
 python scripts\run_collection.py --seed 42
 ```
 
-### 7. Run tests
+### 6. Run tests
 
 ```powershell
 python -m pytest -v
@@ -97,19 +90,19 @@ MockCollector (Milestone 1)   ← Current
         ↓
 Raw JSON saved to data/raw/
         ↓
-AirfareObservationCreate (Pydantic validation)
+AirfareObservationCreate (Pydantic validation + fee sum check)
         ↓
-ObservationValidator (domain rules)
+ObservationValidator (domain rules + bounds)
         ↓
-StoragePipeline
+StoragePipeline (DB deduplication + audit log)
         ↓
-PostgreSQL (Docker)
+PostgreSQL (8 hardened tables)
         ↓
-Index Engine (Phase 11-12)    ← Upcoming
+Index Engine (DGCA-weighted)  ← Phase 11-12
         ↓
-FastAPI (Phase 14)            ← Upcoming
+FastAPI (REST API)            ← Phase 14
         ↓
-React Dashboard (Phase 15)    ← Upcoming
+React Dashboard (Vite)        ← Phase 15
 ```
 
 ---
@@ -127,7 +120,7 @@ React Dashboard (Phase 15)    ← Upcoming
 ### Online Airfare Observations (Primary)
 - Collected independently from permitted airline/OTA sources
 - See `scraper/collectors/` for collector implementations
-- Milestone 1: MockCollector (synthetic, seeded data)
+- Milestone 1: MockCollector (synthetic, seeded data with complete fee breakdowns)
 - Future: Real Playwright-based collectors (pending ethical review)
 
 ---
@@ -141,10 +134,11 @@ See `backend/app/models/` for full ORM definitions.
 | `sources` | Data collection sources |
 | `routes` | Origin-destination route pairs |
 | `airlines` | Airline operators |
-| `collection_runs` | Per-run audit trail |
-| `airfare_observations` | Individual fare quotes |
-| `index_values` | Computed daily APIx values |
-| `route_weights` | PSD route weights (Phase 11) |
+| `collection_runs` | Per-run audit trail (status, blocks, CAPTCHAs) |
+| `airfare_observations` | Individual fare quotes with fee breakdown, departure band, synthetic & lead flags |
+| `index_values` | Computed daily/weekly APIx values (overall and variant indices) |
+| `route_weights` | DGCA city-pair passenger traffic weights with validity periods |
+| `lead_time_weights` | Advance booking curve weights (T+1, T+7, T+15, T+30, T+45) |
 
 ---
 
@@ -162,7 +156,7 @@ Currently active:
 
 ## Index Methodology (Phase 11-12)
 
-The APIx will be computed as:
+The APIx is computed using DGCA passenger traffic city-pair weights:
 
 ```
 Route Index = (Current representative route fare / Base-period fare) × 100
@@ -170,7 +164,7 @@ Route Index = (Current representative route fare / Base-period fare) × 100
 APIx = Σ(route_weight × route_index)
 ```
 
-Route weights will be provided from the PSD specification.
+Route weights are derived directly from published DGCA city-pair passenger traffic statistics.
 
 ---
 
@@ -192,27 +186,30 @@ This project follows strict ethical data collection principles:
 ## Testing
 
 ```powershell
-# Run all tests
+# Run all tests against PostgreSQL
 python -m pytest -v
 
 # Run with coverage
 python -m pytest --cov=backend --cov=scraper -v
 
-# Run specific test file
-python -m pytest backend\tests\test_lead_time.py -v
+# Run specific constraint or migration tests
+python -m pytest backend\tests\test_constraints.py -v
+python -m pytest backend\tests\test_migration.py -v
 ```
 
-### Test Coverage (Milestone 1)
+### Test Coverage (Milestone 1 Hardened)
 
-| Module | Tests |
-|--------|-------|
-| Lead-time calculation | 12 |
-| Pydantic schemas | 20 |
-| Fare parser | 38 |
-| Validation pipeline | 15 |
-| Storage pipeline | 12 |
-| MockCollector | 13 |
-| **Total** | **109** |
+| Module | Tests | Description |
+|--------|-------|-------------|
+| Lead-time calculation | 12 | Asia/Kolkata date diffs & edge cases |
+| Pydantic schemas | 22 | Type validation, fee breakdown sum checks, band derivations |
+| Fare parser | 38 | Indian currency formats, symbols, normalizations |
+| Validation pipeline | 14 | Hard failure rules, bounds, plausibility |
+| Storage pipeline | 12 | Dedup handling, collection run lifecycle |
+| MockCollector | 13 | Deterministic seeded observations, fee breakdown |
+| Database constraints | 9 | PostgreSQL CHECK constraints, 5-tuple dedup key, unique periods |
+| Alembic migrations | 2 | 001 → 002 upgrade, downgrade, data migration |
+| **Total** | **122** | **100% passing** |
 
 ---
 
@@ -220,10 +217,9 @@ python -m pytest backend\tests\test_lead_time.py -v
 
 1. **Synthetic data only** — MockCollector, not real scraped data
 2. **No real index computed** — Index construction is Phase 11-12
-3. **FastAPI stub only** — Full API is Phase 14
-4. **No frontend** — React dashboard is Phase 15
-5. **DGCA validation pending** — Phase 17, data to be downloaded
-6. **Route weights TBD** — PSD specification not yet provided
+3. **FastAPI stub only** — Full API endpoints in Phase 14
+4. **React dashboard initial build** — Integrated live in Phase 15
+5. **DGCA validation pending** — Phase 17, 30-day backtesting data
 
 ---
 
@@ -231,17 +227,17 @@ python -m pytest backend\tests\test_lead_time.py -v
 
 - [x] Phase 0: Repository audit
 - [x] Phase 1: Project/environment setup
-- [x] Phase 2: Database schema
-- [x] Phase 3: Airfare observation model
-- [x] Phase 4: One collector (MockCollector)
+- [x] Phase 2: Database schema & hardening (Alembic 001, 002)
+- [x] Phase 3: Airfare observation model with fee breakdown & flight metadata
+- [x] Phase 4: MockCollector with fee breakdown & schedules
 - [x] Phase 5: Raw data storage
-- [x] Phase 6: Cleaning + validation + tests
+- [x] Phase 6: Cleaning + validation + PostgreSQL automated tests
 - [ ] Phase 7: Multiple routes
 - [ ] Phase 8: Lead-time collection
 - [ ] Phase 9: Multiple permitted sources (real collectors)
 - [ ] Phase 10: PostgreSQL integration verified
 - [ ] Phase 11: Route-level index
-- [ ] Phase 12: Weighted overall APIx
+- [ ] Phase 12: Weighted overall APIx (DGCA city-pair weights)
 - [ ] Phase 13: Daily scheduled index
 - [ ] Phase 14: FastAPI backend
 - [ ] Phase 15: React dashboard

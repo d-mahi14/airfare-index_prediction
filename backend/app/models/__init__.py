@@ -9,4 +9,8 @@ from backend.app.models.airfare import (  # noqa: F401
     Source,
 )
 from backend.app.models.collection import CollectionRun  # noqa: F401
-from backend.app.models.index import IndexValue, RouteWeight  # noqa: F401
+from backend.app.models.index import (  # noqa: F401
+    IndexValue,
+    LeadTimeWeight,
+    RouteWeight,
+)

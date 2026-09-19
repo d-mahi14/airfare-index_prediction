@@ -4,11 +4,10 @@ Tests for the scraper validation pipeline.
 
 Validates:
   - Valid observation passes
-  - Missing total fare → rejected
-  - Zero total fare → rejected (below minimum)
-  - base_fare > total_fare → rejected (caught by schema, but tested here too)
-  - sold_out flight → rejected
-  - cancelled flight → rejected
+  - Below minimum fare → rejected
+  - Sold out flight → rejected
+  - Cancelled flight → rejected
+  - Fee breakdown mismatch → rejected
   - High fare → warning only (not rejected)
   - Batch validation counts
 """
@@ -25,6 +24,7 @@ sys.path.insert(0, str(project_root))
 from backend.app.schemas.airfare import AirfareObservationCreate
 from scraper.pipelines.validator import (
     ValidationResult,
+    _check_fare_positive,
     validate_observation,
     validate_observations,
 )
@@ -44,7 +44,10 @@ def _make_obs(**overrides) -> AirfareObservationCreate:
         "travel_date": _TRAVEL_DATE,
         "fare_class": "Economy",
         "base_fare": Decimal("4200.00"),
-        "taxes": Decimal("700.00"),
+        "taxes": Decimal("200.00"),
+        "udf_psf": Decimal("300.00"),
+        "convenience_fee": Decimal("200.00"),
+        "other_fees": Decimal("0.00"),
         "total_fare": Decimal("4900.00"),
         "currency": "INR",
         "availability": "available",
@@ -61,15 +64,8 @@ class TestValidateObservation:
         assert result.status == "valid"
         assert result.rejection_reason is None
 
-    def test_zero_fare_rejected(self):
-        obs = _make_obs(base_fare=None, total_fare=Decimal("0.00"))
-        result = validate_observation(obs)
-        assert not result.is_valid
-        assert result.status == "rejected"
-        assert "non_positive" in result.rejection_reason or "minimum" in result.rejection_reason
-
     def test_below_minimum_fare_rejected(self):
-        """Fares below ₹500 are implausible."""
+        """Fares below ₹500 are implausible for domestic air travel."""
         obs = _make_obs(base_fare=None, total_fare=Decimal("200.00"))
         result = validate_observation(obs)
         assert not result.is_valid
@@ -101,8 +97,11 @@ class TestValidateObservation:
         obs = _make_obs(
             fare_class="Business",
             base_fare=Decimal("25000.00"),
+            taxes=Decimal("3500.00"),
+            udf_psf=Decimal("500.00"),
+            convenience_fee=Decimal("500.00"),
+            other_fees=Decimal("0.00"),
             total_fare=Decimal("29500.00"),
-            taxes=Decimal("4500.00"),
         )
         result = validate_observation(obs)
         assert result.is_valid

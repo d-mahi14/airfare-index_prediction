@@ -1,12 +1,12 @@
 """
 backend/tests/test_storage.py
-Tests for the DB storage pipeline using SQLite in-memory DB.
+Tests for the DB storage pipeline using PostgreSQL test DB.
 
 Validates:
   - Source/Route/Airline upsert (get-or-create)
   - Valid observation written with status="valid"
   - Rejected observation written with status="rejected"
-  - Duplicate detection — second identical observation gets status="duplicate"
+  - Duplicate detection — second identical observation detected and duplicate count incremented
   - CollectionRun record created and updated correctly
 """
 import sys
@@ -48,7 +48,10 @@ def _make_obs(**overrides) -> AirfareObservationCreate:
         "travel_date": _TRAVEL_DATE,
         "fare_class": "Economy",
         "base_fare": Decimal("4200.00"),
-        "taxes": Decimal("700.00"),
+        "taxes": Decimal("200.00"),
+        "udf_psf": Decimal("300.00"),
+        "convenience_fee": Decimal("200.00"),
+        "other_fees": Decimal("0.00"),
         "total_fare": Decimal("4900.00"),
         "currency": "INR",
         "availability": "available",
@@ -109,7 +112,8 @@ class TestCollectionRun:
         assert run.id is not None
         assert run.source_id == source.id
         assert run.route_id == route.id
-        assert run.end_time is None  # not finished yet
+        assert run.status == "running"
+        assert run.end_time is None
 
     def test_collection_run_finished(self, db_session):
         source = _get_or_create_source(db_session, "TestCollector")
@@ -119,10 +123,11 @@ class TestCollectionRun:
         run = create_collection_run(db_session, source, route)
         db_session.commit()
 
-        finish_collection_run(db_session, run, 5, 4, 1)
+        finish_collection_run(db_session, run, 5, 4, 1, blocked_count=0, captcha_count=0)
         db_session.commit()
 
         assert run.end_time is not None
+        assert run.status == "completed"
         assert run.records_found == 5
         assert run.records_saved == 4
         assert run.records_rejected == 1
@@ -153,6 +158,7 @@ class TestStoreObservations:
         assert stored.total_fare == Decimal("4900.00")
         assert stored.lead_days == 7
         assert stored.status == "valid"
+        assert stored.is_synthetic is True
 
     def test_rejected_observation_stored(self, db_session):
         run = self._setup_run(db_session)
@@ -170,10 +176,10 @@ class TestStoreObservations:
         assert stored.rejection_reason == "sold_out_flight"
 
     def test_duplicate_detection(self, db_session):
-        """Second identical observation in same session → status=duplicate."""
+        """Second identical observation in same session → detected and duplicate count incremented."""
         run = self._setup_run(db_session)
         obs1 = _make_obs()
-        obs2 = _make_obs()  # exact same fields
+        obs2 = _make_obs()  # exact same unique key
 
         # First insert
         saved, _, _ = store_observations(db_session, [obs1], [], run)
@@ -186,11 +192,9 @@ class TestStoreObservations:
         assert saved2 == 0
         assert dupes == 1
 
-        # Should have 1 valid + 1 duplicate in DB
         all_obs = db_session.query(AirfareObservation).all()
-        statuses = {o.status for o in all_obs}
-        assert "valid" in statuses
-        assert "duplicate" in statuses
+        assert len(all_obs) == 1
+        assert all_obs[0].status == "valid"
 
     def test_different_airlines_not_duplicate(self, db_session):
         """Different airline on same route+date → NOT a duplicate."""
