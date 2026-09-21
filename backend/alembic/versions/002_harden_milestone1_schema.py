@@ -96,6 +96,7 @@ def upgrade() -> None:
     op.add_column('index_values', sa.Column('variant', sa.String(length=50), nullable=False, server_default='overall'))
     op.add_column('index_values', sa.Column('n_obs', sa.Integer(), nullable=True))
     op.execute("UPDATE index_values SET n_obs = observation_count WHERE n_obs IS NULL")
+    op.drop_column('index_values', 'observation_count')
     op.add_column('index_values', sa.Column('coverage', sa.Numeric(precision=5, scale=4), nullable=True))
 
     op.drop_constraint('uq_index_date_version', 'index_values', type_='unique')
@@ -112,6 +113,8 @@ def upgrade() -> None:
     op.add_column('route_weights', sa.Column('valid_to', sa.Date(), nullable=True))
 
     op.drop_constraint('uq_route_weight_date', 'route_weights', type_='unique')
+    op.drop_column('route_weights', 'effective_date')
+
     op.create_unique_constraint(
         'uq_route_weight_period',
         'route_weights',
@@ -141,12 +144,17 @@ def downgrade() -> None:
 
     # ─── 4. route_weights ──────────────────────────────────────────
     op.drop_constraint('uq_route_weight_period', 'route_weights', type_='unique')
+    op.add_column('route_weights', sa.Column('effective_date', sa.Date(), nullable=True))
+    op.execute("UPDATE route_weights SET effective_date = valid_from WHERE effective_date IS NULL")
+    op.alter_column('route_weights', 'effective_date', nullable=False)
     op.create_unique_constraint('uq_route_weight_date', 'route_weights', ['route_id', 'effective_date'])
     op.drop_column('route_weights', 'valid_to')
     op.drop_column('route_weights', 'valid_from')
 
     # ─── 3. index_values ───────────────────────────────────────────
     op.drop_constraint('uq_index_values_key', 'index_values', type_='unique')
+    op.add_column('index_values', sa.Column('observation_count', sa.Integer(), nullable=True))
+    op.execute("UPDATE index_values SET observation_count = n_obs WHERE observation_count IS NULL")
     op.create_unique_constraint('uq_index_date_version', 'index_values', ['index_date', 'methodology_version'])
     op.drop_column('index_values', 'coverage')
     op.drop_column('index_values', 'n_obs')

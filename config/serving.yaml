@@ -1,0 +1,48 @@
+# config/serving.yaml
+# Serving & Validation Gate Configuration for Real-Time Indian Domestic Airfare Price Index (APIx)
+
+gate:
+  max_age_hours: 36
+  fee_tolerance: 0.05
+  cross_source_tolerance_pct: 0.10      # 10% max spread between sources before lowering confidence
+  cross_source_tolerance_abs: 500.0     # ₹500 minimum absolute difference threshold
+  min_recent_observations: 1           # Minimum observations in recent window for high confidence
+  
+  # Plausible price bands per route (in INR)
+  # Default band applied when route not explicitly overridden
+  default_plausible_min: 1500.0
+  default_plausible_max: 40000.0
+  
+  route_plausible_bands:
+    DEL-BOM:
+      min: 2000.0
+      max: 35000.0
+    BOM-DEL:
+      min: 2000.0
+      max: 35000.0
+    DEL-BLR:
+      min: 2500.0
+      max: 40000.0
+    BLR-DEL:
+      min: 2500.0
+      max: 40000.0
+    BOM-BLR:
+      min: 1800.0
+      max: 30000.0
+    BLR-BOM:
+      min: 1800.0
+      max: 30000.0
+
+auth:
+  api_keys:
+    - apix_dev_key_2024
+    - apix_prod_live_2024
+    - apix_test_client_key
+  header_name: X-API-Key
+
+demo:
+  allow_synthetic_default: false
+  banner_text: "SYNTHETIC DEMO DATA - NOT FOR PRODUCTION PRICE INDEX"
+
+watchlist:
+  rate_limit_per_client_hourly: 10

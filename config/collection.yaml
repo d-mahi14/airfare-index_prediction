@@ -1,0 +1,70 @@
+# config/collection.yaml
+# Grid generation and collection scheduling configuration for APIx
+#
+# Defines the multi-dimensional observation matrix:
+#   Routes x Lead Windows x Carriers x Departure Bands x Sources x Fare Class
+
+grid:
+  routes_config: scraper/config/routes.yaml
+  lead_time_weights_config: config/lead_time_weights.yaml
+  sources_config: config/sources.yaml
+
+  # Active advance purchase lead windows
+  lead_days:
+    - 1
+    - 7
+    - 15
+    - 30
+    - 45
+
+  # Monitored carriers
+  carriers:
+    - name: IndiGo
+      iata: "6E"
+      type: LCC
+    - name: Air India
+      iata: "AI"
+      type: FSC
+    - name: SpiceJet
+      iata: "SG"
+      type: LCC
+    - name: Air India Express
+      iata: "IX"
+      type: LCC
+    - name: Akasa Air
+      iata: "QP"
+      type: LCC
+
+  # Monitored departure time bands
+  departure_bands:
+    - early      # 00:00 - 05:59
+    - morning    # 06:00 - 11:59
+    - afternoon  # 12:00 - 16:59
+    - evening    # 17:00 - 20:59
+    - night      # 21:00 - 23:59
+
+  # Fare classes
+  fare_classes:
+    - Economy
+
+  # Default active sources in mock/development mode
+  default_sources:
+    - MockCollector
+
+# Daily Scheduler Configuration (APScheduler / Cron / Task Scheduler)
+scheduler:
+  cron_expression: "0 2 * * *"  # Daily at 02:00 IST
+  timezone: "Asia/Kolkata"
+  collection_window_start: "01:00"
+  collection_window_end: "05:00"
+
+# Circuit Breaker Protection against Persistent Blocks / CAPTCHAs
+circuit_breaker:
+  failure_threshold: 3          # Trip after 3 consecutive blocks/errors
+  cooldown_seconds: 300         # Wait 5 minutes before trying a probe request
+  track_captcha_as_block: true
+
+# Collection Mode Isolation
+collection_mode:
+  active_mode: "mock"           # "mock" | "recorded" | "live"
+  allow_mixed_modes: false      # Strict isolation: mock and real never mix in one run

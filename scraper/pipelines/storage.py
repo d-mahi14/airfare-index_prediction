@@ -217,9 +217,26 @@ def store_observations(
 
     # --- Store rejected observations (never silently discard) ---
     for obs, reason in rejected:
+        collection_date = obs.collection_date or obs.collection_timestamp.astimezone(KOLKATA_TZ).date()
+
+        # Duplicate check against unique constraint
+        if _is_duplicate(
+            session,
+            source_id,
+            obs.flight_number,
+            obs.travel_date,
+            obs.fare_class or "Economy",
+            collection_date,
+        ):
+            duplicate_count += 1
+            logger.debug(
+                f"Duplicate rejected observation skipped: {obs.flight_number} {obs.travel_date} "
+                f"{obs.fare_class} on {collection_date}"
+            )
+            continue
+
         airline = _get_or_create_airline(session, obs.airline_name, obs.airline_iata)
         route = _get_or_create_route(session, obs.origin, obs.destination)
-        collection_date = obs.collection_date or obs.collection_timestamp.astimezone(KOLKATA_TZ).date()
 
         rej_record = AirfareObservation(
             id=uuid.uuid4(),

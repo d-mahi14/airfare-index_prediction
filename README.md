@@ -154,32 +154,43 @@ Currently active:
 
 ---
 
-## Index Methodology (Phase 11-12)
+## Index Methodology
 
-The APIx is computed using DGCA passenger traffic city-pair weights:
+The **APIx (Airfare Price Index)** is constructed via a rigorous 3-tier economic aggregation framework (see [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md) for full mathematical specifications):
 
-```
-Route Index = (Current representative route fare / Base-period fare) × 100
+### 1. Elementary Stratum Index (Jevons Formula)
+For each `(route, lead_window)` cell, observations are matched on stratum $s = (\text{carrier}, \text{dep\_band}, \text{fare\_class})$ against base period $0$:
+$$I_{r, l, t} = \left( \prod_{s \in S_{\text{matched}}} \frac{\bar{p}_{s, t}}{\bar{p}_{s, 0}} \right)^{1 / |S_{\text{matched}}|} \times 100$$
+*(If $|S_{\text{matched}}| = 0$, falls back to cell-wide geometric mean ratios).*
 
-APIx = Σ(route_weight × route_index)
-```
+### 2. Lead-Time Aggregation (Advance Booking Curve)
+Aggregates advance booking windows ($T+1, T+7, T+15, T+30, T+45$) with dynamic weight normalization:
+$$I_{r, t} = \sum_{l \in L_{\text{present}}} w_l^* \cdot I_{r, l, t}, \quad \text{where } \sum w_l^* = 1.0$$
 
-Route weights are derived directly from published DGCA city-pair passenger traffic statistics.
+### 3. National Route Aggregation & Chain-Linking
+Aggregates across corridors using official DGCA annual city-pair passenger traffic weights with periodic chain-linking:
+$$I_t = \sum_{r \in R_{\text{present}}} w_r^* \cdot I_{r, t}, \qquad I_t^{\text{chained}} = I_{T_{\text{link}}}^{\text{chained}} \times \frac{I_t^{(k)}}{I_{T_{\text{link}}}^{(k)}}$$
+
+### 4. Decomposition Variants
+- `total_fare`: Full passenger expenditure (Base + Tax + UDF/PSF + Fee)
+- `base_fare_only`: Airline revenue yield
+- `taxes_and_fees`: Statutory taxes & airport development charges
+
 
 ---
 
-## Ethical Scraping Policy
+## Ethical Data Collection Policy
 
-This project follows strict ethical data collection principles:
+This project strictly adheres to ethical, legal, and non-evasive data collection principles:
 
-1. ✅ Robots.txt checked before any collector implementation
-2. ✅ ToS reviewed for each source
-3. ✅ Rate limits respected (configurable delay in .env)
-4. ✅ No CAPTCHA bypassing
-5. ✅ No bot protection evasion
-6. ✅ No authentication bypass
-7. ✅ No private/user-specific data collection
-8. ✅ Synthetic/mock data used for pipeline development
+1. ✅ **Automated Robots.txt Audit**: `compliance.robots` checks and caches `robots.txt` rules using an identifiable User-Agent (`APIxBot/1.0`).
+2. ⚠️ **Human Terms of Service Review**: ToS compliance is marked as `"TO BE REVIEWED BY HUMAN"` across all sources; no unverified ToS review claims are made.
+3. ✅ **Safe Defaults**: All sources default to `collection_mode: recorded_fixture` to ensure no unauthorized network requests occur.
+4. ✅ **Rate Limiting**: Conservative rate limits (`max_rps: 0.5`) and Crawl-delay compliance are strictly enforced.
+5. ✅ **Zero Evasion**: Never bypass CAPTCHAs, bot shields (Cloudflare/Akamai), or anti-bot protections.
+6. ✅ **No Authentication / PII**: Never log in, create accounts, hold seats, or collect private user data.
+7. ✅ **Identifiable User-Agent**: Clearly announces research origin and compliance contact.
+8. ✅ **Synthetic / Mock Development**: Pipeline development and testing use synthetic data marked `is_synthetic=true`.
 
 ---
 

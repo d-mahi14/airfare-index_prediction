@@ -1,0 +1,68 @@
+{
+  "status": "success",
+  "searchQuery": {
+    "from": "BOM",
+    "to": "DEL",
+    "departDate": "2026-10-12",
+    "cabinClass": "Economy"
+  },
+  "flightList": [
+    {
+      "airline": "Air India",
+      "airlineCode": "AI",
+      "flightNumber": "AI-887",
+      "departureTime": "07:00",
+      "arrivalTime": "09:15",
+      "duration": 135,
+      "stops": 0,
+      "pricing": {
+        "baseFare": 4500.0,
+        "taxes": 225.0,
+        "udfPsf": 440.0,
+        "convenienceFee": 350.0,
+        "otherFees": 0.0,
+        "total": 5515.0
+      },
+      "isSoldOut": false,
+      "seatsLeft": 5
+    },
+    {
+      "airline": "Akasa Air",
+      "airlineCode": "QP",
+      "flightNumber": "QP-1354",
+      "departureTime": "12:30",
+      "arrivalTime": "14:45",
+      "duration": 135,
+      "stops": 0,
+      "pricing": {
+        "baseFare": 3400.0,
+        "taxes": 170.0,
+        "udfPsf": 320.0,
+        "convenienceFee": 250.0,
+        "otherFees": 0.0,
+        "total": 4140.0
+      },
+      "isSoldOut": false,
+      "seatsLeft": 8
+    },
+    {
+      "airline": "SpiceJet",
+      "airlineCode": "SG",
+      "flightNumber": "SG-8711",
+      "departureTime": "17:10",
+      "arrivalTime": "19:25",
+      "duration": 135,
+      "stops": 0,
+      "pricing": {
+        "baseFare": 3200.0,
+        "taxes": 160.0,
+        "udfPsf": 250.0,
+        "convenienceFee": 250.0,
+        "otherFees": 0.0,
+        "total": 3860.0
+      },
+      "isSoldOut": true,
+      "seatsLeft": 0
+    }
+  ]
+}

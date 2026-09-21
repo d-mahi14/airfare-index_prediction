@@ -26,7 +26,10 @@ python-dotenv==1.0.1
 # --- Testing ---
 pytest==8.3.4
 pytest-cov==6.0.0
+hypothesis==6.124.0
 
 # --- Utilities ---
 httpx==0.28.1        # async HTTP (for future real collectors)
 PyYAML==6.0.2        # route config loading
+groq==1.7.0          # AI insights service
+

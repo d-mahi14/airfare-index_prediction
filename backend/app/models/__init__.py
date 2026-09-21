@@ -14,3 +14,16 @@ from backend.app.models.index import (  # noqa: F401
     LeadTimeWeight,
     RouteWeight,
 )
+from backend.app.models.watchlist import RouteWatchlist  # noqa: F401
+
+__all__ = [
+    "Airline",
+    "AirfareObservation",
+    "Route",
+    "Source",
+    "CollectionRun",
+    "IndexValue",
+    "LeadTimeWeight",
+    "RouteWeight",
+    "RouteWatchlist",
+]

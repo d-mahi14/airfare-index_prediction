@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { FareExplorer } from './components/FareExplorer'
 
 // ─── MoSPI reference data (from mospi_airfare.csv) ───────────────────────────
 const MOSPI_DATA = [
@@ -91,6 +92,7 @@ function Header({ apiHealth, currentTime }) {
 function Sidebar({ activeNav, setActiveNav }) {
   const navItems = [
     { id: 'overview',  icon: '◈', label: 'Overview' },
+    { id: 'explorer',  icon: '✈', label: 'Fare Explorer', badge: 'Live' },
     { id: 'routes',    icon: '⊹', label: 'Routes',    badge: '4' },
     { id: 'airlines',  icon: '◎', label: 'Airlines',  badge: '4' },
     { id: 'leadtime',  icon: '⊷', label: 'Lead Time' },
@@ -592,6 +594,8 @@ export default function App() {
         return <div className="panel-grid"><MoSPIPanel /></div>
       case 'collector':
         return <div className="panel-grid"><CollectorPanel apiHealth={apiHealth} /></div>
+      case 'explorer':
+        return <FareExplorer />
       default:
         return null
     }
@@ -599,6 +603,7 @@ export default function App() {
 
   const pageTitles = {
     overview:  ['Overview', 'Real-time APIx summary and key metrics'],
+    explorer:  ['Fare Explorer', 'Serve-time verified airfare quotes with full fee decomposition'],
     routes:    ['Route Indices', 'Per-route APIx values and lead-time heatmap'],
     airlines:  ['Airline Analysis', 'Fare distribution across carriers'],
     leadtime:  ['Lead-Time Analysis', 'How fares change with booking horizon'],

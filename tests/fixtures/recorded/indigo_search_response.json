@@ -1,0 +1,116 @@
+{
+  "header": {
+    "status": "success",
+    "currency": "INR",
+    "search_origin": "DEL",
+    "search_destination": "BLR",
+    "search_date": "2026-10-10",
+    "timestamp": "2026-09-21T14:00:00Z"
+  },
+  "journeys": [
+    {
+      "flight_number": "6E-2041",
+      "carrier": "IndiGo",
+      "carrier_code": "6E",
+      "origin": "DEL",
+      "destination": "BLR",
+      "departure_time": "05:45",
+      "arrival_time": "08:35",
+      "duration_minutes": 170,
+      "stops": 0,
+      "cabin_class": "Economy",
+      "fare_details": {
+        "base_fare": 3800.0,
+        "gst": 190.0,
+        "passenger_service_fee": 250.0,
+        "user_development_fee": 190.0,
+        "convenience_fee": 300.0,
+        "other_charges": 0.0,
+        "total_fare": 4730.0
+      },
+      "availability": {
+        "status": "available",
+        "seats_remaining": 12,
+        "is_sold_out": false
+      }
+    },
+    {
+      "flight_number": "6E-6125",
+      "carrier": "IndiGo",
+      "carrier_code": "6E",
+      "origin": "DEL",
+      "destination": "BLR",
+      "departure_time": "09:15",
+      "arrival_time": "12:00",
+      "duration_minutes": 165,
+      "stops": 0,
+      "cabin_class": "Economy",
+      "fare_details": {
+        "base_fare": 4400.0,
+        "gst": 220.0,
+        "passenger_service_fee": 250.0,
+        "user_development_fee": 190.0,
+        "convenience_fee": 300.0,
+        "other_charges": 0.0,
+        "total_fare": 5360.0
+      },
+      "availability": {
+        "status": "available",
+        "seats_remaining": 3,
+        "is_sold_out": false
+      }
+    },
+    {
+      "flight_number": "6E-5011",
+      "carrier": "IndiGo",
+      "carrier_code": "6E",
+      "origin": "DEL",
+      "destination": "BLR",
+      "departure_time": "14:30",
+      "arrival_time": "17:20",
+      "duration_minutes": 170,
+      "stops": 0,
+      "cabin_class": "Economy",
+      "fare_details": {
+        "base_fare": 4100.0,
+        "gst": 205.0,
+        "passenger_service_fee": 250.0,
+        "user_development_fee": 190.0,
+        "convenience_fee": 300.0,
+        "other_charges": 0.0,
+        "total_fare": 5045.0
+      },
+      "availability": {
+        "status": "available",
+        "seats_remaining": 7,
+        "is_sold_out": false
+      }
+    },
+    {
+      "flight_number": "6E-2849",
+      "carrier": "IndiGo",
+      "carrier_code": "6E",
+      "origin": "DEL",
+      "destination": "BLR",
+      "departure_time": "19:45",
+      "arrival_time": "22:35",
+      "duration_minutes": 170,
+      "stops": 0,
+      "cabin_class": "Economy",
+      "fare_details": {
+        "base_fare": 3900.0,
+        "gst": 195.0,
+        "passenger_service_fee": 250.0,
+        "user_development_fee": 190.0,
+        "convenience_fee": 300.0,
+        "other_charges": 0.0,
+        "total_fare": 4835.0
+      },
+      "availability": {
+        "status": "sold_out",
+        "seats_remaining": 0,
+        "is_sold_out": true
+      }
+    }
+  ]
+}

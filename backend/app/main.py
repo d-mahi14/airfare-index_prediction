@@ -1,13 +1,16 @@
 """
 backend/app/main.py
-FastAPI application entry point — Milestone 1 stub.
+FastAPI application entry point.
 
-Only /api/health is implemented in Milestone 1.
-Full API endpoints (fares, index, routes) come in Phase 14.
+Endpoints:
+  - /api/health: Service health check
+  - /fares/search & /api/fares/search: Serve-time validated fare search
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.app.api.fares import router as fares_router
+from backend.app.api.insights import router as insights_router
 from backend.app.config import get_settings
 from backend.app.database import check_connection
 
@@ -20,7 +23,7 @@ app = FastAPI(
         "for Indian domestic aviation. Provides daily APIx values, route-level indices, "
         "lead-time analysis, and MoSPI CPI benchmark comparison."
     ),
-    version="0.1.0-milestone1",
+    version="0.2.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
 )
@@ -32,6 +35,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Register endpoint routers
+app.include_router(fares_router)
+app.include_router(insights_router)
 
 
 @app.get("/api/health", tags=["Health"])
@@ -46,5 +53,5 @@ def health_check():
         "database": "connected" if db_ok else "disconnected",
         "app_env": settings.app_env,
         "base_year": settings.base_year,
-        "version": "0.1.0-milestone1",
+        "version": "0.2.0",
     }

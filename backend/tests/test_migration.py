@@ -1,48 +1,57 @@
 """
 backend/tests/test_migration.py
-Tests for Alembic migrations up and down (001 -> 002 -> 001 -> head).
+Tests for Alembic migrations up/down and schema drift detection.
 
 Verifies:
   - Non-destructive migration of fees into other_fees
   - Population of collection_date and is_synthetic flags
   - Observation count migration to n_obs
   - Full reversibility of migration 002
+  - Schema parity with ORM metadata (zero schema drift)
+  - Safety guard enforcement on non-_test database names
 """
-import os
 from datetime import date, datetime, timezone
 from pathlib import Path
 
 import pytest
 from alembic import command
+from alembic.autogenerate import compare_metadata
 from alembic.config import Config
+from alembic.migration import MigrationContext
 from sqlalchemy import create_engine, text
 
 from backend.app.database import Base
-from backend.tests.conftest import TEST_POSTGRES_URL
+from backend.tests.conftest import (
+    ALEMBIC_INI_PATH,
+    get_test_database_url,
+    verify_test_db_safety,
+)
 
 _PROJECT_ROOT = Path(__file__).parent.parent.parent
-_ALEMBIC_INI = str(_PROJECT_ROOT / "alembic.ini")
 
 
 @pytest.fixture(scope="module")
 def migration_engine():
-    try:
-        engine = create_engine(TEST_POSTGRES_URL, pool_pre_ping=True)
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
-        yield engine
-        engine.dispose()
-    except Exception as exc:
-        pytest.skip(f"PostgreSQL test database not available for migration tests: {exc}")
+    """Engine dedicated to migration lifecycle and drift tests on test DB."""
+    test_db_url = get_test_database_url()
+    verify_test_db_safety(test_db_url)
+    engine = create_engine(test_db_url, pool_pre_ping=True)
+    yield engine
+    engine.dispose()
 
 
 class TestAlembicMigrations:
     def test_migration_up_and_down_lifecycle(self, migration_engine):
+        """Verify full migration lifecycle 001 -> 002 -> 001 -> head."""
+        test_db_url = get_test_database_url()
+        verify_test_db_safety(test_db_url)
+
+        # 1. Clean public schema
         with migration_engine.begin() as conn:
             conn.execute(text("DROP SCHEMA public CASCADE; CREATE SCHEMA public;"))
 
         with migration_engine.connect() as conn:
-            cfg = Config(_ALEMBIC_INI)
+            cfg = Config(ALEMBIC_INI_PATH)
             cfg.attributes["connection"] = conn
 
             # 2. Upgrade to 001
@@ -131,5 +140,45 @@ class TestAlembicMigrations:
             # 7. Upgrade back to head
             command.upgrade(cfg, "head")
 
-        with migration_engine.begin() as conn:
-            Base.metadata.create_all(conn)
+    def test_schema_drift_matches_orm_metadata(self, migration_engine):
+        """Compare the migrated database schema against ORM Base.metadata and assert zero drift."""
+        test_db_url = get_test_database_url()
+        verify_test_db_safety(test_db_url)
+
+        with migration_engine.connect() as conn:
+            cfg = Config(ALEMBIC_INI_PATH)
+            cfg.attributes["connection"] = conn
+            command.upgrade(cfg, "head")
+
+            mc = MigrationContext.configure(
+                conn,
+                opts={"compare_type": True, "compare_server_default": False},
+            )
+            raw_diff = compare_metadata(mc, Base.metadata)
+
+            # Filter out cosmetic docstring comments
+            def is_structural_diff(diff_item):
+                if isinstance(diff_item, (list, tuple)) and len(diff_item) > 0:
+                    first = diff_item[0]
+                    if isinstance(first, (list, tuple)) and len(first) > 0:
+                        return first[0] != "modify_comment"
+                    return first != "modify_comment"
+                return True
+
+            structural_diffs = [d for d in raw_diff if is_structural_diff(d)]
+            assert structural_diffs == [], f"Detected schema drift between migrations and ORM: {structural_diffs}"
+
+    def test_safety_guard_rejects_non_test_db(self):
+        """Verify that verify_test_db_safety rejects any database name not ending in '_test'."""
+        with pytest.raises(RuntimeError, match="SAFETY GUARD VIOLATION"):
+            verify_test_db_safety("postgresql+psycopg2://user:pass@localhost:5432/airfare_db")
+
+        with pytest.raises(RuntimeError, match="SAFETY GUARD VIOLATION"):
+            verify_test_db_safety("postgresql+psycopg2://user:pass@localhost:5432/production")
+
+        with pytest.raises(RuntimeError, match="SAFETY GUARD VIOLATION"):
+            verify_test_db_safety("postgresql+psycopg2://user:pass@localhost:5432/airfare_prod")
+
+        # Valid test DB names ending with _test must pass without error
+        verify_test_db_safety("postgresql+psycopg2://user:pass@localhost:5432/airfare_test")
+        verify_test_db_safety("postgresql+psycopg2://user:pass@localhost:5432/my_app_test")

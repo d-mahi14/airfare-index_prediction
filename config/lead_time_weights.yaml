@@ -1,0 +1,40 @@
+# config/lead_time_weights.yaml
+# Lead-time advance purchase curve weights for the APIx composite price index.
+#
+# Advance Purchase Windows:
+#   - T+1  (1 day prior): Immediate / urgent travel
+#   - T+7  (7 days prior): Short-lead / weekly planning
+#   - T+15 (15 days prior): Medium-lead / fortnight planning
+#   - T+30 (30 days prior): Standard advance booking
+#   - T+45 (45 days prior): Early-bird booking
+#
+# ASSUMPTION:
+#   In the baseline methodology (Milestone 1 / Phase 8), lead windows are assigned equal weights (0.20 each)
+#   pending empirical booking-curve estimation from historical passenger reservation data.
+#   Weights are normalized so they sum exactly to 1.000000.
+
+lead_time_weights:
+  - lead_days: 1
+    weight: 0.200000
+    name: "T+1 (1 Day Prior)"
+    description: "Urgent/same-day travel"
+
+  - lead_days: 7
+    weight: 0.200000
+    name: "T+7 (7 Days Prior)"
+    description: "Short-lead weekly travel"
+
+  - lead_days: 15
+    weight: 0.200000
+    name: "T+15 (15 Days Prior)"
+    description: "Fortnight advance travel"
+
+  - lead_days: 30
+    weight: 0.200000
+    name: "T+30 (30 Days Prior)"
+    description: "Standard monthly advance travel"
+
+  - lead_days: 45
+    weight: 0.200000
+    name: "T+45 (45 Days Prior)"
+    description: "Early-bird long-range travel"

@@ -1,0 +1,124 @@
+{
+  "source": "EaseMyTrip",
+  "search_route": "BOM-DEL",
+  "search_date": "2026-10-05",
+  "search_timestamp": "2026-09-20T00:30:00Z",
+  "currency": "INR",
+  "flight_results": [
+    {
+      "airline": "IndiGo",
+      "airline_code": "6E",
+      "flight_number": "6E-5324",
+      "origin": "BOM",
+      "destination": "DEL",
+      "departure_time": "06:00",
+      "arrival_time": "08:15",
+      "duration_minutes": 135,
+      "stops": 0,
+      "fare_class": "Economy",
+      "fare_breakup": {
+        "base_fare": 3500.0,
+        "taxes": 175.0,
+        "udf_psf": 380.0,
+        "convenience_fee": 300.0,
+        "other_fees": 0.0,
+        "total_fare": 4355.0
+      },
+      "is_sold_out": false,
+      "seats_left": 9,
+      "availability": "available"
+    },
+    {
+      "airline": "Air India",
+      "airline_code": "AI",
+      "flight_number": "AI-806",
+      "origin": "BOM",
+      "destination": "DEL",
+      "departure_time": "08:00",
+      "arrival_time": "10:10",
+      "duration_minutes": 130,
+      "stops": 0,
+      "fare_class": "Economy",
+      "fare_breakup": {
+        "base_fare": 4200.0,
+        "taxes": 210.0,
+        "udf_psf": 440.0,
+        "convenience_fee": 350.0,
+        "other_fees": 0.0,
+        "total_fare": 5200.0
+      },
+      "is_sold_out": false,
+      "seats_left": 4,
+      "availability": "available"
+    },
+    {
+      "airline": "Akasa Air",
+      "airline_code": "QP",
+      "flight_number": "QP-1102",
+      "origin": "BOM",
+      "destination": "DEL",
+      "departure_time": "11:30",
+      "arrival_time": "13:45",
+      "duration_minutes": 135,
+      "stops": 0,
+      "fare_class": "Economy",
+      "fare_breakup": {
+        "base_fare": 3200.0,
+        "taxes": 160.0,
+        "udf_psf": 320.0,
+        "convenience_fee": 250.0,
+        "other_fees": 0.0,
+        "total_fare": 3930.0
+      },
+      "is_sold_out": false,
+      "seats_left": 7,
+      "availability": "available"
+    },
+    {
+      "airline": "SpiceJet",
+      "airline_code": "SG",
+      "flight_number": "SG-8169",
+      "origin": "BOM",
+      "destination": "DEL",
+      "departure_time": "14:15",
+      "arrival_time": "16:30",
+      "duration_minutes": 135,
+      "stops": 0,
+      "fare_class": "Economy",
+      "fare_breakup": {
+        "base_fare": 3100.0,
+        "taxes": 155.0,
+        "udf_psf": 250.0,
+        "convenience_fee": 250.0,
+        "other_fees": 0.0,
+        "total_fare": 3755.0
+      },
+      "is_sold_out": false,
+      "seats_left": 2,
+      "availability": "available"
+    },
+    {
+      "airline": "Air India Express",
+      "airline_code": "IX",
+      "flight_number": "IX-1422",
+      "origin": "BOM",
+      "destination": "DEL",
+      "departure_time": "18:45",
+      "arrival_time": "21:00",
+      "duration_minutes": 135,
+      "stops": 0,
+      "fare_class": "Economy",
+      "fare_breakup": {
+        "base_fare": 3300.0,
+        "taxes": 165.0,
+        "udf_psf": 380.0,
+        "convenience_fee": 250.0,
+        "other_fees": 0.0,
+        "total_fare": 4095.0
+      },
+      "is_sold_out": true,
+      "seats_left": 0,
+      "availability": "sold_out"
+    }
+  ]
+}

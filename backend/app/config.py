@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     scraper_request_delay_seconds: float = 2.0
     scraper_max_retries: int = 3
 
+    # --- AI / LLM (Groq) ---
+    groq_api_key: str = ""
+    groq_model: str = "llama-3.3-70b-versatile"
+
     @field_validator("log_level")
     @classmethod
     def validate_log_level(cls, v: str) -> str:

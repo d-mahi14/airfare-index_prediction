@@ -1,9 +1,8 @@
 # scraper/config/routes.yaml
 # Route definitions for the APIx collection pipeline.
 #
-# These are the routes for which we collect airfare observations.
-# Weights will be populated from the PSD specification (Phase 11).
-# Until then, weight fields are placeholders only.
+# Top 20 Indian domestic city-pairs by annual passenger volume (DGCA data).
+# Route weights are loaded and normalized from data/reference/dgca_city_pair_traffic.csv.
 #
 # Fields:
 #   origin:       IATA origin airport code
@@ -11,11 +10,9 @@
 #   route_code:   canonical identifier (origin-destination)
 #   name:         human-readable route name
 #   active:       whether this route is currently being collected
-#
-# Note: These are India's highest-traffic domestic routes by passenger volume
-# (DGCA annual data). Route weights will be specified by the PSD document.
 
 routes:
+  # Mumbai <-> Delhi
   - origin: BOM
     destination: DEL
     route_code: BOM-DEL
@@ -28,53 +25,122 @@ routes:
     name: "Delhi → Mumbai"
     active: true
 
-  - origin: BOM
-    destination: BLR
-    route_code: BOM-BLR
-    name: "Mumbai → Bengaluru"
-    active: true
-
+  # Delhi <-> Bengaluru
   - origin: DEL
     destination: BLR
     route_code: DEL-BLR
     name: "Delhi → Bengaluru"
     active: true
 
-  - origin: BOM
-    destination: HYD
-    route_code: BOM-HYD
-    name: "Mumbai → Hyderabad"
-    active: false   # enable after BOM-DEL is stable
+  - origin: BLR
+    destination: DEL
+    route_code: BLR-DEL
+    name: "Bengaluru → Delhi"
+    active: true
 
+  # Mumbai <-> Bengaluru
+  - origin: BOM
+    destination: BLR
+    route_code: BOM-BLR
+    name: "Mumbai → Bengaluru"
+    active: true
+
+  - origin: BLR
+    destination: BOM
+    route_code: BLR-BOM
+    name: "Bengaluru → Mumbai"
+    active: true
+
+  # Delhi <-> Hyderabad
   - origin: DEL
     destination: HYD
     route_code: DEL-HYD
     name: "Delhi → Hyderabad"
-    active: false
+    active: true
 
+  - origin: HYD
+    destination: DEL
+    route_code: HYD-DEL
+    name: "Hyderabad → Delhi"
+    active: true
+
+  # Mumbai <-> Hyderabad
   - origin: BOM
-    destination: MAA
-    route_code: BOM-MAA
-    name: "Mumbai → Chennai"
-    active: false
+    destination: HYD
+    route_code: BOM-HYD
+    name: "Mumbai → Hyderabad"
+    active: true
 
-  - origin: DEL
-    destination: MAA
-    route_code: DEL-MAA
-    name: "Delhi → Chennai"
-    active: false
+  - origin: HYD
+    destination: BOM
+    route_code: HYD-BOM
+    name: "Hyderabad → Mumbai"
+    active: true
 
+  # Delhi <-> Kolkata
   - origin: DEL
     destination: CCU
     route_code: DEL-CCU
     name: "Delhi → Kolkata"
-    active: false
+    active: true
 
+  - origin: CCU
+    destination: DEL
+    route_code: CCU-DEL
+    name: "Kolkata → Delhi"
+    active: true
+
+  # Mumbai <-> Kolkata
   - origin: BOM
     destination: CCU
     route_code: BOM-CCU
     name: "Mumbai → Kolkata"
-    active: false
+    active: true
+
+  - origin: CCU
+    destination: BOM
+    route_code: CCU-BOM
+    name: "Kolkata → Mumbai"
+    active: true
+
+  # Delhi <-> Chennai
+  - origin: DEL
+    destination: MAA
+    route_code: DEL-MAA
+    name: "Delhi → Chennai"
+    active: true
+
+  - origin: MAA
+    destination: DEL
+    route_code: MAA-DEL
+    name: "Chennai → Delhi"
+    active: true
+
+  # Mumbai <-> Chennai
+  - origin: BOM
+    destination: MAA
+    route_code: BOM-MAA
+    name: "Mumbai → Chennai"
+    active: true
+
+  - origin: MAA
+    destination: BOM
+    route_code: MAA-BOM
+    name: "Chennai → Mumbai"
+    active: true
+
+  # Bengaluru <-> Hyderabad
+  - origin: BLR
+    destination: HYD
+    route_code: BLR-HYD
+    name: "Bengaluru → Hyderabad"
+    active: true
+
+  - origin: HYD
+    destination: BLR
+    route_code: HYD-BLR
+    name: "Hyderabad → Bengaluru"
+    active: true
 
 # Lead-time windows to collect for each route (days before travel)
 lead_time_days:

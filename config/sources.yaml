@@ -1,0 +1,154 @@
+# config/sources.yaml
+# Source registry configuration for Real-Time Indian Domestic Airfare Price Index (APIx)
+#
+# collection_mode options:
+#   - recorded_fixture (default): Uses deterministic pre-recorded or mock fare quotes
+#   - live_scrape: Live web collection (strictly requires robots.txt permission & human ToS sign-off)
+#   - official_api: Official partner API endpoint
+#   - disabled: Source is currently inactive
+#
+# NOTE: All tos_notes must remain "TO BE REVIEWED BY HUMAN" until formal legal/ethical review.
+
+sources:
+  - name: IndiGo
+    type: airline
+    base_url: https://www.goindigo.in
+    collection_mode: recorded_fixture
+    max_rps: 0.5
+    robots_status: pending
+    tos_notes: TO BE REVIEWED BY HUMAN
+    last_checked: null
+    search_paths_to_check:
+      - /flight-search
+      - /booking
+      - /flights
+
+  - name: Air India
+    type: airline
+    base_url: https://www.airindia.com
+    collection_mode: recorded_fixture
+    max_rps: 0.5
+    robots_status: pending
+    tos_notes: TO BE REVIEWED BY HUMAN
+    last_checked: null
+    search_paths_to_check:
+      - /en-in/book-flight
+      - /flight-search
+      - /booking
+
+  - name: Air India Express
+    type: airline
+    base_url: https://www.airindiaexpress.com
+    collection_mode: recorded_fixture
+    max_rps: 0.5
+    robots_status: pending
+    tos_notes: TO BE REVIEWED BY HUMAN
+    last_checked: null
+    search_paths_to_check:
+      - /booking
+      - /flights
+      - /search
+
+  - name: Akasa Air
+    type: airline
+    base_url: https://www.akasaair.com
+    collection_mode: recorded_fixture
+    max_rps: 0.5
+    robots_status: pending
+    tos_notes: TO BE REVIEWED BY HUMAN
+    last_checked: null
+    search_paths_to_check:
+      - /flight-search
+      - /booking
+      - /search
+
+  - name: SpiceJet
+    type: airline
+    base_url: https://www.spicejet.com
+    collection_mode: recorded_fixture
+    max_rps: 0.5
+    robots_status: pending
+    tos_notes: TO BE REVIEWED BY HUMAN
+    last_checked: null
+    search_paths_to_check:
+      - /flight-search
+      - /booking
+      - /flights
+
+  - name: MakeMyTrip
+    type: ota
+    base_url: https://www.makemytrip.com
+    collection_mode: recorded_fixture
+    max_rps: 0.5
+    robots_status: pending
+    tos_notes: TO BE REVIEWED BY HUMAN
+    last_checked: null
+    search_paths_to_check:
+      - /flight/search
+      - /flights/
+      - /api/flight
+
+  - name: Yatra
+    type: ota
+    base_url: https://www.yatra.com
+    collection_mode: recorded_fixture
+    max_rps: 0.5
+    robots_status: pending
+    tos_notes: TO BE REVIEWED BY HUMAN
+    last_checked: null
+    search_paths_to_check:
+      - /flight-search
+      - /flights
+      - /air-search
+
+  - name: EaseMyTrip
+    type: ota
+    base_url: https://www.easemytrip.com
+    collection_mode: recorded_fixture
+    max_rps: 0.5
+    robots_status: pending
+    tos_notes: TO BE REVIEWED BY HUMAN
+    last_checked: null
+    search_paths_to_check:
+      - /FlightList
+      - /flight-search
+      - /flights
+
+  - name: Cleartrip
+    type: ota
+    base_url: https://www.cleartrip.com
+    collection_mode: recorded_fixture
+    max_rps: 0.5
+    robots_status: pending
+    tos_notes: TO BE REVIEWED BY HUMAN
+    last_checked: null
+    search_paths_to_check:
+      - /flights/results
+      - /flights
+      - /flight-search
+
+  - name: Ixigo
+    type: ota
+    base_url: https://www.ixigo.com
+    collection_mode: recorded_fixture
+    max_rps: 0.5
+    robots_status: pending
+    tos_notes: TO BE REVIEWED BY HUMAN
+    last_checked: null
+    search_paths_to_check:
+      - /search/result/flight
+      - /flights
+      - /api/flight
+
+  - name: Goibibo
+    type: ota
+    base_url: https://www.goibibo.com
+    collection_mode: recorded_fixture
+    max_rps: 0.5
+    robots_status: pending
+    tos_notes: TO BE REVIEWED BY HUMAN
+    last_checked: null
+    search_paths_to_check:
+      - /flights/air-
+      - /flights/
+      - /flight-search

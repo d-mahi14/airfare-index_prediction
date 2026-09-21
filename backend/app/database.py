@@ -83,6 +83,16 @@ def get_db_session() -> Generator[Session, None, None]:
         session.close()
 
 
+def get_db() -> Generator[Session, None, None]:
+    """FastAPI dependency for yielding database session."""
+    factory = get_session_factory()
+    session = factory()
+    try:
+        yield session
+    finally:
+        session.close()
+
+
 def check_connection() -> bool:
     """Return True if the database is reachable."""
     try:
