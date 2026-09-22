@@ -52,3 +52,14 @@
 ## 6. PostgreSQL Test Engine Integration
 - **Decision:** Migrated database testing from SQLite in-memory to PostgreSQL (`airfare_test_db`).
 - **Validation Coverage:** Added automated tests verifying Alembic migration `upgrade` and `downgrade` reversibility, data preservation, and database-level constraint enforcement.
+
+---
+
+## 7. Index Construction & PSD Alignment Analysis
+- **Decision:** Formal evaluation of Passenger Share Distribution (PSD) vs. DGCA passenger-weighted Jevons aggregation model.
+- **Current Alignment Status:** Fully Satisfies the specification defined in `docs/METHODOLOGY.md` (matched-model Jevons at elementary level, lead-time booking curve weighting, and DGCA city-pair Passenger Share Distribution weighting at route level).
+- **Potential Variant Trade-Offs & Future Enhancements:**
+  1. *Matched-Model Jevons (Current)* vs. *Törnqvist / Laspeyres Weighted Formula*: Jevons is unweighted geometric mean of price relatives at elementary stratum level, satisfying transitivity and time-reversal axioms without requiring real-time intra-day passenger transaction volume weights.
+  2. *Lead-Time Fixed Booking Curve* vs. *Dynamic Dynamic Lead-Time PSD Weights*: Current lead-time weights use static 5-window advance purchase distributions ($w_l = 0.20$). If quarterly DGCA advance booking distribution data becomes available, `lead_time_weights` table supports dynamic validity ranges (`valid_from` / `valid_to`).
+  3. *Chain-Linking Policy*: Annual chain-linking formula ($I_t^{\text{chained}} = I_{T_{\text{link}}}^{\text{chained}} \cdot \frac{I_t^{(k)}}{I_{T_{\text{link}}}^{(k)}}$) prevents level jumps when DGCA route traffic weights shift.
+

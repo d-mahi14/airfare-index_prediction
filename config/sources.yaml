@@ -2,14 +2,36 @@
 # Source registry configuration for Real-Time Indian Domestic Airfare Price Index (APIx)
 #
 # collection_mode options:
-#   - recorded_fixture (default): Uses deterministic pre-recorded or mock fare quotes
-#   - live_scrape: Live web collection (strictly requires robots.txt permission & human ToS sign-off)
+#   - recorded_fixture: Uses deterministic pre-recorded/mock fare quotes
+#   - live_scrape: Live web collection
 #   - official_api: Official partner API endpoint
 #   - disabled: Source is currently inactive
 #
-# NOTE: All tos_notes must remain "TO BE REVIEWED BY HUMAN" until formal legal/ethical review.
+# IMPORTANT:
+# - A source must NOT be changed to live_scrape until BOTH:
+#     1. robots.txt has been reviewed, and
+#     2. human ToS/ethical review has been completed.
+# - Do not bypass robots.txt, authentication, CAPTCHA, rate limits,
+#   anti-bot mechanisms, paywalls, or Terms of Service restrictions.
+# - Until human review is completed, sources remain recorded_fixture.
+#
+# robots_status values:
+#   - pending
+#   - allowed
+#   - disallowed
+#
+# tos_notes MUST remain "TO BE REVIEWED BY HUMAN" until the actual
+# Terms of Service/access policy has been reviewed by a human.
+#
+# last_checked must remain null until the corresponding robots/ToS review
+# has actually been performed.
 
 sources:
+
+  # ============================================================
+  # AIRLINES
+  # ============================================================
+
   - name: IndiGo
     type: airline
     base_url: https://www.goindigo.in
@@ -74,6 +96,10 @@ sources:
       - /flight-search
       - /booking
       - /flights
+
+  # ============================================================
+  # ONLINE TRAVEL AGENCIES
+  # ============================================================
 
   - name: MakeMyTrip
     type: ota
