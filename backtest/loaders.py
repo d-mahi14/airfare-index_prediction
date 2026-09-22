@@ -103,9 +103,11 @@ def load_kaggle_historical_data(csv_path: str, db_engine, fixture_mode: bool = F
     
     df = pd.read_csv(csv_path)
     
-    # Deduplicate to avoid unique constraint violation on (flight_number, travel_date, fare_class)
-    df = df.drop_duplicates(subset=['Flight_code', 'Date_of_journey', 'Class'], keep='first')
-    logger.info(f"Loaded and deduplicated {len(df)} rows to insert.")
+    # Deduplicate only exact identical rows. The Kaggle dataset only gives time bands,
+    # so legitimately distinct flights share the same flight_code, date, class, and route.
+    # To prevent DB unique constraint violations, we'll append a suffix later.
+    df = df.drop_duplicates(keep='first')
+    logger.info(f"Loaded and deduplicated {len(df)} true unique rows to insert.")
         
     with Session(db_engine) as session:
         source = get_or_create_source(session)
@@ -119,6 +121,7 @@ def load_kaggle_historical_data(csv_path: str, db_engine, fixture_mode: bool = F
         routes_map = get_or_create_routes(session, df)
         session.commit()
         
+        seen_keys = {}  # Tracks (flight_number, travel_date, fare_class) for suffixing
         records = []
         for index, row in df.iterrows():
             orig_iata = CITY_TO_IATA.get(row['Source'])
@@ -161,15 +164,27 @@ def load_kaggle_historical_data(csv_path: str, db_engine, fixture_mode: bool = F
             # Kaggle data maps to 2023-01-15 exactly for collection date.
             collection_date = date(2023, 1, 15)
             
+            # Flight code disambiguation for Kaggle time-band issues
+            base_flight_num = row['Flight_code'][:20]
+            fare_class = row['Class']
+            key = (base_flight_num, travel_date, fare_class)
+            
+            if key in seen_keys:
+                seen_keys[key] += 1
+                flight_number = f"{base_flight_num}-{seen_keys[key]}"
+            else:
+                seen_keys[key] = 1
+                flight_number = base_flight_num
+            
             record = AirfareObservation(
                 collection_date=collection_date,
                 source_id=source.id,
                 route_id=route.id,
                 airline_id=airline.id,
-                flight_number=row['Flight_code'][:20],
+                flight_number=flight_number[:50],  # Ensure it fits any DB constraint limits
                 travel_date=travel_date,
                 lead_days=days_left,
-                fare_class=row['Class'],
+                fare_class=fare_class,
                 total_fare=float(row['Fare']),
                 currency="INR",
                 stops=stops,

@@ -1,6 +1,8 @@
 Date_of_journey,Journey_day,Airline,Flight_code,Class,Source,Departure,Total_stops,Arrival,Destination,Duration_in_hours,Days_left,Fare
 2023-01-16,Monday,SpiceJet,SG-8169,Economy,Delhi,After 6 PM,non-stop,After 6 PM,Mumbai,2.0833,1,5335
+2023-01-16,Monday,SpiceJet,SG-8169,Economy,Bangalore,After 6 PM,non-stop,After 6 PM,Delhi,2.0833,1,5335
 2023-01-16,Monday,Indigo,6E-2519,Economy,Delhi,After 6 PM,non-stop,Before 6 AM,Mumbai,2.3333,1,5899
+2023-01-16,Monday,Indigo,6E-2519,Economy,Delhi,After 6 PM,non-stop,Before 6 AM,Mumbai,4.5,1,6500
 2023-01-20,Friday,GO FIRST,G8-354,Economy,Delhi,After 6 PM,1-stop,Before 6 AM,Bangalore,2.1667,5,5801
 2023-02-06,Monday,SpiceJet,SG-8709,Economy,Hyderabad,6 AM - 12 PM,non-stop,After 6 PM,Kolkata,2.0833,22,5794
 2023-03-01,Wednesday,Vistara,UK-999,Business,Chennai,Before 6 AM,2-stops,After 6 PM,Ahmedabad,10.0,45,25000
