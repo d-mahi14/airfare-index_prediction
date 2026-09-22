@@ -55,3 +55,4 @@ logs/
 
 # Docker volumes
 postgres_data/
+data/external/
